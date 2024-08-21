@@ -1,12 +1,17 @@
 import type { Knex } from 'knex';
 
+import path from 'path';
 // Update with your config settings.
+
+//the path to sqllite
+//should be from the root of the project
+const dbPath = path.join(__dirname, 'dev.sqlite3');
 
 const config: { [key: string]: Knex.Config } = {
   development: {
     client: 'sqlite3',
     connection: {
-      filename: './dev.sqlite3',
+      filename: dbPath, //'./dev.sqlite3',
     },
   },
 

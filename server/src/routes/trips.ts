@@ -34,22 +34,21 @@ type TripToInsert = {
   end_date: Date;
 };
 
-export const GetTrips = async (req: Request, res: Response) => {
+const GetTrips = async (req: Request, res: Response) => {
   //get trip id from req.params
 
-  const { id } = req.params;
+  //const { id } = req.params;
   try {
-    const trips = await db('trips').select('*').where({ id });
+    const trips = await db('trips').select('*'); //.where({ id });
     res.json(trips);
   } catch (error) {
+    console.log(error);
     res.status(500).json({ error: error });
   }
 };
 
 const CreateTrip = async (req: Request, res: Response) => {
   const { name, description, start_date, end_date } = req.body;
-
-  const { id } = req.params;
 
   try {
     const trip_to_insert: TripToInsert = {
@@ -103,9 +102,16 @@ const updateTrip = async (req: Request, res: Response) => {
   }
 };
 
-export default {
-  GetTrips,
-  CreateTrip,
-  deleteTrip,
-  updateTrip,
+const getTrip = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const trip = await db('trips').select('*').where({ id });
+
+    res.json(trip);
+  } catch (error) {
+    res.status(500).json({ error: error });
+  }
 };
+
+export { GetTrips, CreateTrip, deleteTrip, updateTrip, getTrip };

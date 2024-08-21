@@ -11,7 +11,7 @@ type Image = {
   name: string;
   description: string;
   file_path: string;
-  created_at: Date;
+  created_at: string;
 };
 
 type ImageRequest = {
@@ -68,40 +68,71 @@ type SubmitImageRequest = Request & {
 };
 
 const CreateImage = async (req: SubmitImageRequest, res: Response) => {
+  console.log('Create Image');
   try {
-    const { tripId } = req.params;
+    const { tripid } = req.params;
     const { name, description } = req.body;
 
     //maybe ignore this and just allow a bunch of images to be uploaded
     // at once
 
-    const req_image = req.files[0] as Express.Multer.File;
+    //const req_image = req.files[0] as Express.Multer.File;
+    console.log(req.files);
 
-    const images = req.files as Express.Multer.File[];
+    const files = req.files as Express.Multer.File[];
+    //const req_image = req.files['image'] as Express.Multer.File;
 
-    for (const image of images) {
+    //const images = req.files as Express.Multer.File[];
+
+    /*if (!req.file) {
+      res.status(400).json({ error: 'No Image Provided' });
+      return;
+    }*/
+
+    const images = [req.file as Express.Multer.File];
+
+    for (const image of files) {
       const file_path = image.destination + '/' + image.filename;
 
       // Use exiftool to get the metadata of the image
       const metadata = await exiftool.read(file_path);
 
       //Get the GPS Coordinates
+      let latitude = 0;
+      let longitude = 0;
       const gps = metadata.GPSPosition;
-      const [latitude, longitude] = gps.split(' ');
+      if (gps) {
+        [latitude, longitude] = gps.split(' ');
+      } else {
+        const latitude = 0;
+        const longitude = 0;
+      }
 
       // Get the date the image was taken
+
       const date_taken = metadata.CreateDate;
+
+      console.log(date_taken);
+
+      let created_at = new Date();
+
+      //convert the date to a string
+      if (date_taken) {
+        created_at = date_taken.toString();
+      }
+
+      const relative_path = image.filename;
 
       //insert into the database
       const image_db = await db('images')
         .insert({
-          trip_id: tripId,
+          tripid,
           name,
           description,
-          file_path,
-          latitude,
-          longitude,
-          date_taken,
+          file_path: relative_path,
+          lat: latitude,
+          long: longitude,
+          created_at: created_at,
         })
         .returning('*');
 
@@ -119,13 +150,17 @@ const CreateImage = async (req: SubmitImageRequest, res: Response) => {
     }
 
     // Save the image to the images folder
-    const file_path = req_image.destination + '/' + req_image.filename;
+    // const file_path = req_image.destination + '/' + req_image.filename;
 
-    const image = await db('images')
-      .insert({ trip_id: tripId, name, description, file_path })
-      .returning('*');
-    res.json(image);
+    // const file_path = req.file.destination + '/' + req.file.filename;
+
+    /*const image = await db('images')
+      .insert({ tripId, name, description, file_path, created_at:  })
+      .returning('*');*/
+
+    res.json();
   } catch (error) {
+    console.log(error);
     res.status(500).json({ error: 'Gateway' });
   }
 };
@@ -142,7 +177,7 @@ Times Will Be In UTC
 
 const GetImages = async (req: Request, res: Response) => {
   try {
-    const { tripId } = req.params;
+    const { tripid } = req.params;
     const { start_time, end_time } = req.query;
 
     // if start_time and end_time are provided, filter images by created_at
@@ -150,7 +185,7 @@ const GetImages = async (req: Request, res: Response) => {
 
     if (start_time && end_time) {
       const images = await db('images')
-        .where({ trip_id: tripId })
+        .where({ tripid })
         .whereBetween('created_at', [start_time, end_time])
         .select('*');
 
@@ -160,7 +195,7 @@ const GetImages = async (req: Request, res: Response) => {
 
     if (start_time && !end_time) {
       const images = await db('images')
-        .where({ trip_id: tripId })
+        .where({ tripid })
         .where('created_at', '>', start_time)
         .select('*');
 
@@ -170,7 +205,7 @@ const GetImages = async (req: Request, res: Response) => {
 
     if (!start_time && end_time) {
       const images = await db('images')
-        .where({ trip_id: tripId })
+        .where({ tripid })
         .where('created_at', '<', end_time)
         .select('*');
 
@@ -178,10 +213,17 @@ const GetImages = async (req: Request, res: Response) => {
       return;
     }
 
-    const images = await db('images').where({ trip_id: tripId }).select('*');
+    const images = await db('images').where({ tripid }).select('*');
+
+    //transform created_at to a string
+    images.forEach((image: Image) => {
+      console.log(image.created_at.toString());
+      image.created_at = image.created_at.toString();
+    });
 
     res.json(images);
   } catch (error) {
+    console.log(error);
     res.status(500).json({ error: 'Gatway' });
   }
 };
