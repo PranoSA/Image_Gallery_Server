@@ -246,17 +246,57 @@ const GetImage = async (req: Request, res: Response) => {
 // Delete an image
 const DeleteImage = async (req: Request, res: Response) => {
   try {
-    const { tripId, imageId, file_path } = req.params;
+    const { tripid, id } = req.params;
 
-    await db('images').where({ trip_id: tripId, id: imageId }).delete();
+    const image_in_existence = await db('images').where({ id }).select('*');
+
+    console.log(id);
+
+    const i = image_in_existence[0];
+
+    if (image_in_existence.length === 0) {
+      res.status(404).json({ error: 'Image Not Found' });
+      return;
+    }
+
+    console.log(image_in_existence);
+
+    await db('images').where({ tripid, id }).delete();
 
     //find image in the images folder and delete it
-    fs.unlinkSync(path.join(__dirname, 'images', file_path));
+
+    const file_path = image_in_existence[0].file_path;
+    fs.unlinkSync(path.join(process.cwd(), 'src', 'images', file_path));
 
     res.json({ message: 'Image deleted successfully' });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ error: 'Gateway Error' });
   }
 };
 
-export { CreateImage, GetImages, GetImage, DeleteImage };
+const EditImage = async (req: Request, res: Response) => {
+  try {
+    const { tripid, id } = req.params;
+
+    const { name, description, long, lat, created_at } = req.body;
+
+    const image_in_existence = await db('images').where({ id }).select('*');
+
+    if (image_in_existence.length === 0) {
+      res.status(404).json({ error: 'Image Not Found' });
+      return;
+    }
+
+    await db('images')
+      .where({ tripid, id })
+      .update({ name, description, long, lat, created_at });
+
+    res.json({ message: 'Image Updated Successfully' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'Gateway Error' });
+  }
+};
+
+export { CreateImage, GetImages, GetImage, DeleteImage, EditImage };

@@ -15,7 +15,13 @@ import { Request, Response } from 'express';
 
 import { CreatePath, GetPaths } from './routes/paths';
 
-import { CreateImage, DeleteImage, GetImages, GetImage } from './routes/images';
+import {
+  CreateImage,
+  DeleteImage,
+  GetImages,
+  GetImage,
+  EditImage,
+} from './routes/images';
 
 const app = express();
 
@@ -128,12 +134,15 @@ app.post(
   '/api/v1/trip/:tripid/images',
   testMiddleware,
   //uploadImage.single('image'),
-  uploadImage.array('image', 25),
+  uploadImage.array('image', 100),
   CreateImage
 );
 
 //Delete An Image For A Trip
 app.delete('/api/v1/trip/:tripid/images/:id', DeleteImage);
+
+//Edit An Image For A Trip
+app.put('/api/v1/trip/:tripid/images/:id', EditImage);
 
 //Create an Album/Trip
 
