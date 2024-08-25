@@ -152,18 +152,25 @@ export const editPath = async (req: Request, res: Response) => {
   //only support updating
   //style, width, color, description, name
 
-  const { pathid } = req.params;
+  const pathid = req.params.id;
+
+  if (!pathid) {
+    return res.status(400).json({ error: 'No Path ID Provided' });
+  }
 
   const { style, width, color_g, color_r, color_b, description, name } =
     req.body;
 
   try {
+    //
+
     await db('paths')
       .where({ id: pathid })
       .update({ style, width, color_g, color_r, color_b, description, name });
 
     res.json({ message: 'Path Updated' });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ error: error });
   }
 };

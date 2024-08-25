@@ -13,7 +13,7 @@ import {
 
 import { Request, Response } from 'express';
 
-import { CreatePath, GetPaths } from './routes/paths';
+import { CreatePath, editPath, GetPaths } from './routes/paths';
 
 import {
   CreateImage,
@@ -22,6 +22,13 @@ import {
   GetImage,
   EditImage,
 } from './routes/images';
+
+import {
+  getDaySummaries,
+  createDaySummary,
+  updateDaySummary,
+  deleteDaySummary,
+} from './routes/summaries';
 
 const app = express();
 
@@ -117,6 +124,9 @@ app.post(
 
 app.get('/api/v1/trip/:tripid/paths', GetPaths);
 
+//update path
+app.put('/api/v1/trip/:tripid/path/:id', editPath);
+
 //Get The Images For A Trip
 app.get('/api/v1/trip/:tripid/images', GetImages);
 
@@ -153,6 +163,15 @@ app.put('/api/v1/trip/:tripid/images/:id', EditImage);
 //Add Routes to Trip
 
 //Create Image For Trip
+
+//Day Summaries
+app.get('/api/v1/trip/:tripid/day_summaries/:date', getDaySummaries);
+
+app.post('/api/v1/trip/:tripid/day_summaries/:date', createDaySummary);
+
+app.put('/api/v1/trip/:tripid/day_summaries/:date', updateDaySummary);
+
+app.delete('/api/v1/trip/:tripid/day_summaries/:date', deleteDaySummary);
 
 app.listen(5000, () => {
   console.log('Server is running on port 5000');
