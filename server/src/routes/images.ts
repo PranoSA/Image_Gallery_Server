@@ -279,7 +279,7 @@ const EditImage = async (req: Request, res: Response) => {
   try {
     const { tripid, id } = req.params;
 
-    const { name, description, long, lat, created_at } = req.body;
+    const { name, description, long, lat, created_at, category } = req.body;
 
     const image_in_existence = await db('images').where({ id }).select('*');
 
@@ -290,7 +290,7 @@ const EditImage = async (req: Request, res: Response) => {
 
     await db('images')
       .where({ tripid, id })
-      .update({ name, description, long, lat, created_at });
+      .update({ name, description, long, lat, created_at, category });
 
     res.json({ message: 'Image Updated Successfully' });
   } catch (error) {

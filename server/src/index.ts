@@ -9,6 +9,8 @@ import {
   deleteTrip,
   updateTrip,
   getTrip,
+  addCategoryToTrip,
+  removeCategoryFromTrip,
 } from './routes/trips';
 
 import { Request, Response } from 'express';
@@ -133,6 +135,9 @@ app.get('/api/v1/trip/:tripid/images', GetImages);
 //Get A Specific Image For A Trip
 app.get('/api/v1/trip/:tripId/images/:id', GetImage);
 
+// update an image
+app.put('/api/v1/trip/:tripid/images/:id', EditImage);
+
 const testMiddleware = (req: Request, res: Response, next: any) => {
   console.log('Middleware');
   //res.end();
@@ -172,6 +177,12 @@ app.post('/api/v1/trip/:tripid/day_summaries/:date', createDaySummary);
 app.put('/api/v1/trip/:tripid/day_summaries/:date', updateDaySummary);
 
 app.delete('/api/v1/trip/:tripid/day_summaries/:date', deleteDaySummary);
+
+// Now --- do the categories even though its not its own database table
+
+app.post('/api/v1/trip/:tripid/categories', addCategoryToTrip);
+
+app.delete('/api/v1/trip/:tripid/categories', removeCategoryFromTrip);
 
 app.listen(5000, () => {
   console.log('Server is running on port 5000');
