@@ -78,7 +78,8 @@ export const GetPaths = async (req: Request, res: Response) => {
   }
 };
 
-export const CreatePath = async (req: SubmitPathRequest, res: Response) => {
+export const CreatePath = async (req_raw: Request, res: Response) => {
+  const req = req_raw as SubmitPathRequest;
   const {
     name,
     description,

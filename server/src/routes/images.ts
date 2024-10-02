@@ -67,7 +67,8 @@ type SubmitImageRequest = Request & {
   };
 };
 
-const CreateImage = async (req: SubmitImageRequest, res: Response) => {
+const CreateImage = async (req_prev: Request, res: Response) => {
+  const req = req_prev as SubmitImageRequest;
   console.log('Create Image');
   try {
     const { tripid } = req.params;

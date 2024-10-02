@@ -1,4 +1,11 @@
-const express = require('express');
+import dotenv from 'dotenv';
+//load .env file
+dotenv.config();
+
+//console.log(
+console.log(process.env.KEYCLOAK_ISSUER);
+
+import express, { NextFunction, RequestHandler } from 'express';
 import path from 'path';
 import multer from 'multer';
 import cors from 'cors';
@@ -31,6 +38,8 @@ import {
   updateDaySummary,
   deleteDaySummary,
 } from './routes/summaries';
+
+import { verify } from './Auithorization';
 
 const app = express();
 
@@ -95,6 +104,44 @@ const uploadPath = multer({ storage: pathStorage });
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello World');
+});
+
+const auth_middleware: RequestHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const bearer_header = req.headers.authorization;
+  const bearer = bearer_header?.split(' ');
+
+  if (!bearer || bearer.length !== 2) {
+    return res.status(401).send('invalid token...');
+  }
+
+  const token = bearer[1];
+
+  try {
+    const decoded = await verify(token); // Replace 'your-secret-key' with your actual secret key
+    console.log('decoded', decoded);
+    //set the user in the request context
+    //not the body, but the request object
+    res.locals.user = decoded.payload.sub;
+    console.log('decoded', decoded);
+
+    next();
+  } catch (error) {
+    console.log('Error verifying token 2', error);
+    res.status(401).send('invalid token...');
+  }
+};
+
+app.use('/whoami', auth_middleware, (req: Request, res: Response) => {
+  //
+  console.log('User:', res.locals.user);
+  console.log('Request:', req.body);
+  res.send({
+    user: res.locals.user,
+  });
 });
 
 // Static Paths For Files
