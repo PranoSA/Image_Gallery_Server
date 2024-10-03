@@ -118,23 +118,24 @@ const CreateImage = async (req_prev: Request, res: Response) => {
       // Get the date the image was taken
 
       const date_taken = metadata.CreateDate as ExifDateTime;
-
-      console.log('Date Taken: ', date_taken);
-
       let created_at = new Date();
 
-      let time = '00:00:00';
-      let time_zone = date_taken?.zone || date_taken?.zoneName || '+00:00';
-
-      const hour = date_taken.hour;
-      const minute = date_taken.minute;
-      const second = date_taken.second;
-      const year = date_taken.year;
-      const month = date_taken.month;
-      const day = date_taken.day;
-
+      let time_zone = '00:00:00';
       //convert the date to a string
       if (date_taken) {
+        console.log('Date Taken: ', date_taken);
+
+        time_zone = date_taken?.zone || date_taken?.zoneName || '+00:00';
+
+        console.log('Why would date taken change?', date_taken);
+
+        const hour = date_taken.hour;
+        const minute = date_taken.minute;
+        const second = date_taken.second;
+        const year = date_taken.year;
+        const month = date_taken.month;
+        const day = date_taken.day;
+
         //create date from year, month, day, hour, minute, second
         created_at = new Date(year, month - 1, day, hour, minute, second);
         created_at.setMinutes(
