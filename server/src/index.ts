@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 //console.log(
-console.log(process.env.KEYCLOAK_ISSUER);
 
 import express, { NextFunction, RequestHandler } from 'express';
 import path from 'path';
@@ -32,6 +31,14 @@ import {
   EditImage,
 } from './routes/images';
 
+// invite routes
+import {
+  generate_invite,
+  accept_invite,
+  decline_invite,
+  get_invites,
+} from './routes/invites';
+
 import {
   getDaySummaries,
   createDaySummary,
@@ -59,6 +66,8 @@ const corsOptions = {
   },
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  Headers: ['Content-Type', 'Authorization'],
 };
 
 app.use(cors(corsOptions));
@@ -68,11 +77,9 @@ app.use(express.json());
 // Set up storage for images
 const imageStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    console.log('file', file);
     cb(null, path.join(__dirname, './images/'));
   },
   filename: (req, file, cb) => {
-    console.log('file ff', file);
     cb(null, `${Date.now()}-${file.originalname}`);
   },
 });
@@ -122,11 +129,30 @@ const auth_middleware: RequestHandler = async (
 
   try {
     const decoded = await verify(token); // Replace 'your-secret-key' with your actual secret key
-    console.log('decoded', decoded);
+
     //set the user in the request context
     //not the body, but the request object
     res.locals.user = decoded.payload.sub;
-    console.log('decoded', decoded);
+    //res.locals.email = decoded.payload.
+    //@ts-ignore
+    if (decoded.payload.email) {
+      //@ts-ignore
+      res.locals.email = decoded.payload.email;
+    }
+
+    //also fill out name
+    //@ts-ignore
+    if (decoded.payload.name) {
+      //@ts-ignore
+      res.locals.name = decoded.payload.name;
+    }
+
+    //also fill out username
+    //@ts-ignore
+    if (decoded.payload.preferred_username) {
+      //@ts-ignore
+      res.locals.username = decoded.payload.preferred_username;
+    }
 
     next();
   } catch (error) {
@@ -137,8 +163,7 @@ const auth_middleware: RequestHandler = async (
 
 app.use('/whoami', auth_middleware, (req: Request, res: Response) => {
   //
-  console.log('User:', res.locals.user);
-  console.log('Request:', req.body);
+
   res.send({
     user: res.locals.user,
   });
@@ -148,6 +173,9 @@ app.use('/whoami', auth_middleware, (req: Request, res: Response) => {
 app.use('/static/images/', express.static(path.join(__dirname, 'images')));
 
 app.use('/static/paths', express.static(path.join(__dirname, 'paths')));
+
+//now for the authenticated routes
+app.use(auth_middleware);
 
 //Get Trips
 app.get('/api/v1/trips', GetTrips);
@@ -186,7 +214,6 @@ app.get('/api/v1/trip/:tripId/images/:id', GetImage);
 app.put('/api/v1/trip/:tripid/images/:id', EditImage);
 
 const testMiddleware = (req: Request, res: Response, next: any) => {
-  console.log('Middleware');
   //res.end();
   //return;
   next();
@@ -230,6 +257,12 @@ app.delete('/api/v1/trip/:tripid/day_summaries/:date', deleteDaySummary);
 app.post('/api/v1/trip/:tripid/categories', addCategoryToTrip);
 
 app.delete('/api/v1/trip/:tripid/categories', removeCategoryFromTrip);
+
+//Invite Routes
+app.post('/api/v1/trips/:tripid/invites', generate_invite);
+app.post('/api/v1/invites/:inviteid/accept', accept_invite);
+app.post('/api/v1/invites/:inviteid/decline', decline_invite);
+app.get('/api/v1/invites', get_invites);
 
 app.listen(5000, () => {
   console.log('Server is running on port 5000');

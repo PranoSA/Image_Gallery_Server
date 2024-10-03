@@ -79,7 +79,7 @@ function getKey(
 
 const decodeToken = (token: string) => {
   const decoded = jwt.decode(token, { complete: true });
-  console.log('Decoded JWT:', decoded);
+
   return decoded;
 };
 
@@ -88,7 +88,6 @@ const verify = async (token: string): Promise<Jwt> => {
   if (!decoded) {
     throw new Error('Failed to decode token');
   }
-  console.log('decodediso ', decoded);
 
   return new Promise((resolve, reject) => {
     jwt.verify(token, getKey, jwt_options, (err, decoded) => {
@@ -96,7 +95,7 @@ const verify = async (token: string): Promise<Jwt> => {
         console.log('Error verifying token', err);
         return reject(err);
       }
-      console.log('decodediso1 ', decoded);
+
       resolve(decoded as Jwt);
     });
   });

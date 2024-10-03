@@ -8,10 +8,28 @@ import path from 'path';
 const dbPath = path.join(__dirname, 'dev.sqlite3');
 
 const config: { [key: string]: Knex.Config } = {
-  development: {
+  /*development: {
     client: 'sqlite3',
     connection: {
       filename: dbPath, //'./dev.sqlite3',
+    },
+  },*/
+  development: {
+    client: 'postgresql',
+    connection: {
+      database: 'gis_images',
+      user: 'gis_images_migrations',
+      password: 'gis-images-migrations', //versus query
+      host: 'localhost',
+      port: 5432,
+    },
+    pool: {
+      min: 2,
+      max: 10,
+    },
+    migrations: {
+      tableName: 'knex_migrations',
+      directory: path.join(__dirname, 'migrations_pg'),
     },
   },
 

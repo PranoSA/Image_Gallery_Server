@@ -23,16 +23,12 @@ export async function up(knex: Knex): Promise<void> {
   return knex.schema
     .createTable('permissions', (table) => {
       table.increments('id').primary();
-      table
-        .integer('user_id')
-        .references('id')
-        .inTable('users')
-        .onDelete('CASCADE');
+
       table
         .enum('permission', ['read-write', 'read-only', 'admin'])
         .notNullable();
       table
-        .integer('trip_id')
+        .integer('tripid')
         .references('id')
         .inTable('trips')
         .onDelete('CASCADE');

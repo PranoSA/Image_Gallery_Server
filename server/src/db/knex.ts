@@ -12,10 +12,10 @@ interface Config {
 const Dev_Config: knex.Knex.Config = {
   client: 'pg',
   connection: {
-    host: 'localhost',
-    user: 'user',
-    password: 'password',
-    database: 'trips',
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
   },
 };
 
@@ -47,5 +47,14 @@ const config: Config = {
 
 const db = knex(configs[environment]);
 //const db = knex(config[environment]);
+
+//test connection and print out the result
+db.raw('select 1+1 as result')
+  .then(() => {
+    console.log('DB connection successful');
+  })
+  .catch((err) => {
+    console.error('DB connection failed:', err);
+  });
 
 export default db;

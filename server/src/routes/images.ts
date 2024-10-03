@@ -4,14 +4,21 @@ const { exiftool } = require('exiftool-vendored');
 import fs from 'fs';
 
 import { Request, Response } from 'express';
+import { ExifDateTime } from 'exiftool-vendored';
 
-type Image = {
-  id: string;
-  trip_id: string;
+type ImageToInsert = {
+  tripid: string;
   name: string;
   description: string;
   file_path: string;
-  created_at: string;
+  created_at: Date;
+  time_zone: string;
+  long: number;
+  lat: number;
+};
+
+type Image = ImageToInsert & {
+  id: string;
 };
 
 type ImageRequest = {
@@ -69,7 +76,7 @@ type SubmitImageRequest = Request & {
 
 const CreateImage = async (req_prev: Request, res: Response) => {
   const req = req_prev as SubmitImageRequest;
-  console.log('Create Image');
+
   try {
     const { tripid } = req.params;
     const { name, description } = req.body;
@@ -78,7 +85,6 @@ const CreateImage = async (req_prev: Request, res: Response) => {
     // at once
 
     //const req_image = req.files[0] as Express.Multer.File;
-    console.log(req.files);
 
     const files = req.files as Express.Multer.File[];
     //const req_image = req.files['image'] as Express.Multer.File;
@@ -111,31 +117,54 @@ const CreateImage = async (req_prev: Request, res: Response) => {
 
       // Get the date the image was taken
 
-      const date_taken = metadata.CreateDate;
+      const date_taken = metadata.CreateDate as ExifDateTime;
 
-      console.log(date_taken);
+      console.log('Date Taken: ', date_taken);
 
       let created_at = new Date();
 
+      let time = '00:00:00';
+      let time_zone = date_taken?.zone || date_taken?.zoneName || '+00:00';
+
+      const hour = date_taken.hour;
+      const minute = date_taken.minute;
+      const second = date_taken.second;
+      const year = date_taken.year;
+      const month = date_taken.month;
+      const day = date_taken.day;
+
       //convert the date to a string
       if (date_taken) {
-        created_at = date_taken.toString();
+        //create date from year, month, day, hour, minute, second
+        created_at = new Date(year, month - 1, day, hour, minute, second);
+        created_at.setMinutes(
+          created_at.getMinutes() - created_at.getTimezoneOffset()
+        );
+
+        //add offset to the date
+        console.log('Date Taken: ', created_at);
+        console.log('Time Zone: ', time_zone);
+
+        console.log('Offset: ', created_at.getTimezoneOffset());
       }
 
       const relative_path = image.filename;
 
+      const name = image.originalname;
+
+      const new_image: ImageToInsert = {
+        tripid,
+        name,
+        description,
+        file_path: relative_path,
+        created_at,
+        time_zone,
+        long: longitude,
+        lat: latitude,
+      };
+
       //insert into the database
-      const image_db = await db('images')
-        .insert({
-          tripid,
-          name,
-          description,
-          file_path: relative_path,
-          lat: latitude,
-          long: longitude,
-          created_at: created_at,
-        })
-        .returning('*');
+      const image_db = await db('images').insert(new_image).returning('*');
 
       //Not sure if this date is in UTC? or local time
       // If it is in local time, we need to convert it to UTC
@@ -217,10 +246,6 @@ const GetImages = async (req: Request, res: Response) => {
     const images = await db('images').where({ tripid }).select('*');
 
     //transform created_at to a string
-    images.forEach((image: Image) => {
-      console.log(image.created_at.toString());
-      image.created_at = image.created_at.toString();
-    });
 
     res.json(images);
   } catch (error) {
@@ -251,16 +276,12 @@ const DeleteImage = async (req: Request, res: Response) => {
 
     const image_in_existence = await db('images').where({ id }).select('*');
 
-    console.log(id);
-
     const i = image_in_existence[0];
 
     if (image_in_existence.length === 0) {
       res.status(404).json({ error: 'Image Not Found' });
       return;
     }
-
-    console.log(image_in_existence);
 
     await db('images').where({ tripid, id }).delete();
 

@@ -40,7 +40,7 @@ type TripToInsert = {
   description: string;
   start_date: Date;
   end_date: Date;
-  categories: string;
+  categories: Category[];
 };
 
 const GetTrips = async (req: Request, res: Response) => {
@@ -48,10 +48,26 @@ const GetTrips = async (req: Request, res: Response) => {
 
   //const { id } = req.params;
   try {
-    const trips = await db('trips').select('*'); //.where({ id });
+    //retrieve all trips with matching permissions (user_id)
+
+    const permissions = await db('permissions').select('*').where({
+      user_id: res.locals.user,
+    });
+
+    if (permissions.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const tripids = permissions.map((permission) => permission.tripid);
+
+    //get all trips with matching tripids
+    const trips = await db('trips').select('*').whereIn('id', tripids);
+
+    //const trips = await db('trips').select('*'); //.where({ id });
     res.json(trips);
   } catch (error) {
-    console.log(error);
+    console.log('Trip Error', error);
     res.status(500).json({ error: error });
   }
 };
@@ -63,6 +79,18 @@ const CreateTrip = async (req: Request, res: Response) => {
     res
       .status(400)
       .json({ error: 'name, description, start_date, end_date are required' });
+    return;
+  }
+
+  if (!categories) {
+    res.status(400).json({ error: 'categories is required' });
+  }
+
+  //get sub from res.locals
+  const user_id = res.locals.user;
+
+  if (!user_id) {
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
@@ -78,13 +106,21 @@ const CreateTrip = async (req: Request, res: Response) => {
       description,
       start_date,
       end_date,
-      categories: JSON.stringify(categories),
+      categories: categories || [],
     };
 
     const trip = await db('trips').insert(trip_to_insert).returning('*');
 
+    //create permissions admin for the user
+    await db('permissions').insert({
+      tripid: trip[0].id,
+      permission: 'admin',
+      user_id,
+    });
+
     res.json(trip);
   } catch (error) {
+    console.log(error);
     res.status(500).json({ error: error });
   }
 };
@@ -93,7 +129,22 @@ const deleteTrip = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
+    // ensure admin permissions
+    const user_id = res.locals.user;
+
+    const permissions = await db('permissions')
+      .select('*')
+      .where({ tripid: id, user_id });
+
+    if (permissions.length === 0 || permissions[0].permission !== 'admin') {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const trip = await db('trips').delete('*').where({ id });
+
+    //delete all permissions
+    await db('permissions').delete().where({ tripid: id });
 
     res.json(trip);
   } catch (error) {
@@ -102,7 +153,7 @@ const deleteTrip = async (req: Request, res: Response) => {
 };
 
 //type trip, but category is a string instead of an array
-type TripInsert = Trip | { categories: string };
+type TripInsert = Trip;
 
 const updateTrip = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -131,7 +182,7 @@ const updateTrip = async (req: Request, res: Response) => {
       description,
       start_date,
       end_date,
-      categories: category_json,
+      categories: categories,
     };
 
     const trip = await db('trips')
@@ -154,6 +205,18 @@ const getTrip = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
+    //ensure any level of permissions exists
+    const user_id = res.locals.user;
+
+    const permissions = await db('permissions')
+      .select('*')
+      .where({ tripid: id, user_id });
+
+    if (permissions.length === 0) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const trip = await db('trips').select('*').where({ id });
 
     //set categories to empty array if not provided
@@ -161,35 +224,7 @@ const getTrip = async (req: Request, res: Response) => {
       trip[0].categories = [];
     }*/
 
-    const parsed_trips = await Promise.all(
-      trip.map(async (trip) => {
-        try {
-          return {
-            ...trip,
-            categories: JSON.parse(trip.categories),
-          };
-        } catch (error) {
-          console.error('Error parsing categories:', error);
-
-          // Update the database with an empty array
-          await db('trips')
-            .where({ id: trip.id })
-            .update({ categories: JSON.stringify([]) });
-
-          // Requery the updated trip
-          const updatedTrip = await db('trips')
-            .select('*')
-            .where({ id: trip.id })
-            .first();
-
-          return {
-            ...updatedTrip,
-            categories: JSON.parse(updatedTrip.categories),
-          };
-        }
-      })
-    );
-    res.json(parsed_trips);
+    res.json(trip);
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: error });
@@ -207,6 +242,22 @@ const addCategoryToTrip = async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
+    //ensure read-write or admin permissions
+    const user_id = res.locals.user;
+
+    const permissions = await db('permissions')
+      .select('*')
+      .where({ tripid: id, user_id });
+
+    if (
+      permissions.length === 0 ||
+      (permissions[0].permission !== 'read-write' &&
+        permissions[0].permission !== 'admin')
+    ) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     //read existing categories
     const trip = await db('trips').select('*').where({ id });
 
