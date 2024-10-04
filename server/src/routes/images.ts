@@ -77,6 +77,8 @@ type SubmitImageRequest = Request & {
 const CreateImage = async (req_prev: Request, res: Response) => {
   const req = req_prev as SubmitImageRequest;
 
+  const images_for_return: Image[] = [];
+
   try {
     const { tripid } = req.params;
     const { name, description } = req.body;
@@ -178,6 +180,8 @@ const CreateImage = async (req_prev: Request, res: Response) => {
       // We can use the moment-timezone plugin to get the timezone
       // of the location of the image
       // We can then convert the date to UTC
+
+      images_for_return.push(image_db[0]);
     }
 
     // Save the image to the images folder
@@ -189,7 +193,10 @@ const CreateImage = async (req_prev: Request, res: Response) => {
       .insert({ tripId, name, description, file_path, created_at:  })
       .returning('*');*/
 
-    res.json();
+    res.json(images_for_return);
+
+    //res.json
+
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: 'Gateway' });
