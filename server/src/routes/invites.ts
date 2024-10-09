@@ -95,14 +95,17 @@ const generate_invite = async (req: Request, res: Response) => {
 
   const username = res.locals.name;
 
+  const invite_db = await knex('invites').insert(invite).returning('*');
   // email invite??
+  const invite_id = invite_db[0].id;
 
-  await send_invite(username, email, trip.name, id, code);
+  console.log('Invite ID', invite_id);
+
+  await send_invite(username, email, trip.name, invite_id, code);
 
   //Later - add logic to catch and deal with these failures
 
   //save to da(tabase
-  await knex('invites').insert(invite);
 
   //return invite id
   res.json({ id });
@@ -111,11 +114,27 @@ const generate_invite = async (req: Request, res: Response) => {
 //accept invite will have the id in the path param and code in the query param
 
 const accept_invite = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { inviteid } = req.params;
   const { code } = req.query;
 
+  //test if id in form of uuid
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+  const id = inviteid;
+
+  if (!id || id === '') {
+    return res.status(400).json({ error: 'Invite ID is required' });
+  }
+
+  if (!code || code === '') {
+    return res.status(400).json({ error: 'Missing Code' });
+  }
+
   //check if the invite exists
-  const invite = await knex('invites').where({ id }).first();
+  const invites = await knex('invites').where({ id });
+
+  const invite = invites[0];
 
   if (!invite) {
     return res.status(404).json({ error: 'Invite not found' });
@@ -135,19 +154,30 @@ const accept_invite = async (req: Request, res: Response) => {
   const permissions = {
     tripid: invite.tripid,
     permission: invite.permissions,
+    user_id: res.locals.user,
   };
 
-  //insert permissions
-  await knex('permissions').insert(permissions);
+  console.log('Locals', res.locals);
 
-  //delete the invite
-  await knex('invites').where({ id }).delete();
+  try {
+    //insert permissions
+    await knex('permissions').insert(permissions);
 
-  //redirect user to the trip page or something
-  const url = process.env.CLIENT_URL || 'http://localhost:3000';
+    //delete the invite
+    await knex('invites').where({ id }).delete();
 
-  res.redirect(`${url}/trip/${invite.tripid}`);
+    //redirect user to the trip page or something
+    const url = process.env.CLIENT_URL || 'http://localhost:3000';
 
+    const trip = await knex('trips').where({ id: invite.tripid }).first();
+
+    return res.status(200).json({ trip });
+
+    //res.redirect(`${url}/trip/${invite.tripid}`);
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: 'Failed to accept invite' });
+  }
   //res.json({ message: 'Invite Accepted' });
 };
 

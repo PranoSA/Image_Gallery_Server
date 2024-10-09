@@ -54,12 +54,17 @@ const GetTrips = async (req: Request, res: Response) => {
       user_id: res.locals.user,
     });
 
+    console.log('Permissions', permissions);
+
     if (permissions.length === 0) {
       res.json([]);
       return;
     }
 
-    const tripids = permissions.map((permission) => permission.tripid);
+    //get all tripids -> get unique tripids
+    const tripids = permissions
+      .map((permission) => permission.tripid)
+      .filter((value, index, self) => self.indexOf(value) === index);
 
     //get all trips with matching tripids
     const trips = await db('trips').select('*').whereIn('id', tripids);

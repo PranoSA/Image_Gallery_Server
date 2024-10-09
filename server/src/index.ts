@@ -174,6 +174,8 @@ app.use('/static/images/', express.static(path.join(__dirname, 'images')));
 
 app.use('/static/paths', express.static(path.join(__dirname, 'paths')));
 
+//app.use('/api/v1/verify/:id', verify);
+
 //now for the authenticated routes
 app.use(auth_middleware);
 
@@ -260,7 +262,7 @@ app.delete('/api/v1/trip/:tripid/categories', removeCategoryFromTrip);
 
 //Invite Routes
 app.post('/api/v1/trips/:tripid/invites', generate_invite);
-app.post('/api/v1/invites/:inviteid/accept', accept_invite);
+app.get('/api/v1/invites/:inviteid/accept', accept_invite);
 app.post('/api/v1/invites/:inviteid/decline', decline_invite);
 app.get('/api/v1/invites', get_invites);
 
