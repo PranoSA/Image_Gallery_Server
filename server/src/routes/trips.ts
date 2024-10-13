@@ -40,7 +40,7 @@ type TripToInsert = {
   description: string;
   start_date: Date;
   end_date: Date;
-  categories: Category[];
+  categories: string; // Category[];
 };
 
 const GetTrips = async (req: Request, res: Response) => {
@@ -105,13 +105,15 @@ const CreateTrip = async (req: Request, res: Response) => {
     return;
   }
 
+  console.log('Categories', categories);
+
   try {
     const trip_to_insert: TripToInsert = {
       name,
       description,
       start_date,
       end_date,
-      categories: categories || [],
+      categories: JSON.stringify(categories),
     };
 
     const trip = await db('trips').insert(trip_to_insert).returning('*');
@@ -158,7 +160,14 @@ const deleteTrip = async (req: Request, res: Response) => {
 };
 
 //type trip, but category is a string instead of an array
-type TripInsert = Trip;
+type TripInsert = {
+  id: string;
+  name: string;
+  description: string;
+  start_date: Date;
+  end_date: Date;
+  categories: string; // Category[];
+};
 
 const updateTrip = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -187,7 +196,7 @@ const updateTrip = async (req: Request, res: Response) => {
       description,
       start_date,
       end_date,
-      categories: categories,
+      categories: JSON.stringify(categories),
     };
 
     const trip = await db('trips')
@@ -202,7 +211,8 @@ const updateTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
-    res.status(500).json({ error: error });
+    console.log(error);
+    res.status(500).json({ error: 'Bad Backend' });
   }
 };
 

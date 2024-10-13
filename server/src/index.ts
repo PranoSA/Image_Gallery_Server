@@ -193,6 +193,8 @@ app.delete('/api/v1/trips/:id', deleteTrip);
 //Update Trip
 app.put('/api/v1/trips/:id', updateTrip);
 
+app.put('/api/v1/trip/:id', updateTrip);
+
 //paths
 
 app.post(

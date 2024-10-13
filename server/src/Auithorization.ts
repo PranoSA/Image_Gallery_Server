@@ -92,7 +92,6 @@ const verify = async (token: string): Promise<Jwt> => {
   return new Promise((resolve, reject) => {
     jwt.verify(token, getKey, jwt_options, (err, decoded) => {
       if (err) {
-        console.log('Error verifying token', err);
         return reject(err);
       }
 
