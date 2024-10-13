@@ -54,7 +54,7 @@ const GetTrips = async (req: Request, res: Response) => {
       user_id: res.locals.user,
     });
 
-    console.log('Permissions', permissions);
+
 
     if (permissions.length === 0) {
       res.json([]);
@@ -72,7 +72,7 @@ const GetTrips = async (req: Request, res: Response) => {
     //const trips = await db('trips').select('*'); //.where({ id });
     res.json(trips);
   } catch (error) {
-    console.log('Trip Error', error);
+
     res.status(500).json({ error: error });
   }
 };
@@ -105,7 +105,7 @@ const CreateTrip = async (req: Request, res: Response) => {
     return;
   }
 
-  console.log('Categories', categories);
+
 
   try {
     const trip_to_insert: TripToInsert = {
@@ -127,7 +127,7 @@ const CreateTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
-    console.log(error);
+
     res.status(500).json({ error: error });
   }
 };
@@ -211,7 +211,7 @@ const updateTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
-    console.log(error);
+
     res.status(500).json({ error: 'Bad Backend' });
   }
 };
@@ -241,7 +241,7 @@ const getTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
-    console.log(error);
+
     res.status(500).json({ error: error });
   }
 };
@@ -317,7 +317,7 @@ const addCategoryToTrip = async (req: Request, res: Response) => {
     //update the trip
     await db('trips').update({ categories: new_categories }).where({ id });
   } catch (error) {
-    console.log(error);
+
     res.status(500).json({ error: error });
   }
 };
@@ -348,7 +348,7 @@ const removeCategoryFromTrip = async (req: Request, res: Response) => {
 
     res.json({ message: 'Category removed' });
   } catch (error) {
-    console.log(error);
+
     res.status(500).json({ error: error });
   }
 };

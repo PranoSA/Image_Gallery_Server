@@ -73,7 +73,7 @@ export const GetPaths = async (req: Request, res: Response) => {
     const paths = await db('paths').select('*').where({ tripid });
     res.json(paths);
   } catch (error) {
-    console.log(error);
+
     res.status(500).json({ error: error });
   }
 };
@@ -124,7 +124,7 @@ export const CreatePath = async (req_raw: Request, res: Response) => {
 
     res.json(new_path);
   } catch (error) {
-    console.log(error);
+
     res.status(500).json({ error: error });
   }
 };
@@ -171,7 +171,7 @@ export const editPath = async (req: Request, res: Response) => {
 
     res.json({ message: 'Path Updated' });
   } catch (error) {
-    console.log(error);
+
     res.status(500).json({ error: error });
   }
 };

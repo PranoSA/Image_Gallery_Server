@@ -125,11 +125,7 @@ const CreateImage = async (req_prev: Request, res: Response) => {
       let time_zone = '00:00:00';
       //convert the date to a string
       if (date_taken) {
-        console.log('Date Taken: ', date_taken);
-
         time_zone = date_taken?.zone || date_taken?.zoneName || '+00:00';
-
-        console.log('Why would date taken change?', date_taken);
 
         const hour = date_taken.hour;
         const minute = date_taken.minute;
@@ -145,10 +141,6 @@ const CreateImage = async (req_prev: Request, res: Response) => {
         );
 
         //add offset to the date
-        console.log('Date Taken: ', created_at);
-        console.log('Time Zone: ', time_zone);
-
-        console.log('Offset: ', created_at.getTimezoneOffset());
       }
 
       const relative_path = image.filename;
@@ -196,9 +188,7 @@ const CreateImage = async (req_prev: Request, res: Response) => {
     res.json(images_for_return);
 
     //res.json
-
   } catch (error) {
-    console.log(error);
     res.status(500).json({ error: 'Gateway' });
   }
 };
@@ -257,7 +247,6 @@ const GetImages = async (req: Request, res: Response) => {
 
     res.json(images);
   } catch (error) {
-    console.log(error);
     res.status(500).json({ error: 'Gatway' });
   }
 };
@@ -300,7 +289,6 @@ const DeleteImage = async (req: Request, res: Response) => {
 
     res.json({ message: 'Image deleted successfully' });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ error: 'Gateway Error' });
   }
 };
@@ -324,7 +312,6 @@ const EditImage = async (req: Request, res: Response) => {
 
     res.json({ message: 'Image Updated Successfully' });
   } catch (error) {
-    console.log(error);
     res.status(500).json({ error: 'Gateway Error' });
   }
 };

@@ -99,8 +99,6 @@ const generate_invite = async (req: Request, res: Response) => {
   // email invite??
   const invite_id = invite_db[0].id;
 
-  console.log('Invite ID', invite_id);
-
   await send_invite(username, email, trip.name, invite_id, code);
 
   //Later - add logic to catch and deal with these failures
@@ -157,8 +155,6 @@ const accept_invite = async (req: Request, res: Response) => {
     user_id: res.locals.user,
   };
 
-  console.log('Locals', res.locals);
-
   try {
     //insert permissions
     await knex('permissions').insert(permissions);
@@ -175,7 +171,6 @@ const accept_invite = async (req: Request, res: Response) => {
 
     //res.redirect(`${url}/trip/${invite.tripid}`);
   } catch (e) {
-    console.log(e);
     res.status(500).json({ error: 'Failed to accept invite' });
   }
   //res.json({ message: 'Invite Accepted' });
