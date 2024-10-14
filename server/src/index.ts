@@ -170,7 +170,17 @@ app.use('/whoami', auth_middleware, (req: Request, res: Response) => {
 });
 
 // Static Paths For Files
-app.use('/static/images/', express.static(path.join(__dirname, 'images')));
+app.use(
+  '/static/images/',
+  (req: Request, res: Response, next: NextFunction) => {
+    const download_file = req.query.download === 'true';
+    if (download_file) {
+      res.setHeader('Content-Disposition', 'attachment');
+    }
+    next();
+  },
+  express.static(path.join(__dirname, 'images')),
+);
 
 app.use('/static/paths', express.static(path.join(__dirname, 'paths')));
 
