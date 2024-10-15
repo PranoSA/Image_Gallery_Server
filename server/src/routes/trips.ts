@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-
+import archiver from 'archiver';
 /**
 
 POST /api/trips
@@ -18,6 +18,9 @@ Update a Specific Trip
 */
 
 import db from '../db/knex';
+import path from 'path';
+import fs from 'fs/promises';
+import { createWriteStream } from 'fs';
 
 type Category = {
   category: string;
@@ -43,6 +46,22 @@ type TripToInsert = {
   categories: string; // Category[];
 };
 
+type ImageToInsert = {
+  tripid: string;
+  name: string;
+  description: string;
+  file_path: string;
+  created_at: Date;
+  time_zone: string;
+  long: number;
+  lat: number;
+  category: string;
+};
+
+type Image = ImageToInsert & {
+  id: string;
+};
+
 const GetTrips = async (req: Request, res: Response) => {
   //get trip id from req.params
 
@@ -53,8 +72,6 @@ const GetTrips = async (req: Request, res: Response) => {
     const permissions = await db('permissions').select('*').where({
       user_id: res.locals.user,
     });
-
-
 
     if (permissions.length === 0) {
       res.json([]);
@@ -72,7 +89,6 @@ const GetTrips = async (req: Request, res: Response) => {
     //const trips = await db('trips').select('*'); //.where({ id });
     res.json(trips);
   } catch (error) {
-
     res.status(500).json({ error: error });
   }
 };
@@ -95,7 +111,7 @@ const CreateTrip = async (req: Request, res: Response) => {
   const user_id = res.locals.user;
 
   if (!user_id) {
-    res.status(401).json({ error: 'Unauthorized' });
+    res.status(401).json({ error: 'Unauthorized Access' });
     return;
   }
 
@@ -104,8 +120,6 @@ const CreateTrip = async (req: Request, res: Response) => {
     res.status(400).json({ error: 'categories must be an array' });
     return;
   }
-
-
 
   try {
     const trip_to_insert: TripToInsert = {
@@ -127,7 +141,6 @@ const CreateTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
-
     res.status(500).json({ error: error });
   }
 };
@@ -144,7 +157,7 @@ const deleteTrip = async (req: Request, res: Response) => {
       .where({ tripid: id, user_id });
 
     if (permissions.length === 0 || permissions[0].permission !== 'admin') {
-      res.status(401).json({ error: 'Unauthorized' });
+      res.status(401).json({ error: 'Unauthorized Access To Folder' });
       return;
     }
 
@@ -211,7 +224,6 @@ const updateTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
-
     res.status(500).json({ error: 'Bad Backend' });
   }
 };
@@ -241,7 +253,6 @@ const getTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
-
     res.status(500).json({ error: error });
   }
 };
@@ -317,7 +328,6 @@ const addCategoryToTrip = async (req: Request, res: Response) => {
     //update the trip
     await db('trips').update({ categories: new_categories }).where({ id });
   } catch (error) {
-
     res.status(500).json({ error: error });
   }
 };
@@ -348,8 +358,285 @@ const removeCategoryFromTrip = async (req: Request, res: Response) => {
 
     res.json({ message: 'Category removed' });
   } catch (error) {
-
     res.status(500).json({ error: error });
+  }
+};
+
+const create_temp_link = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user_id = res.locals.user;
+
+  if (!id) {
+    res.status(400).json({ error: 'id is required' });
+    return;
+  }
+
+  if (!user_id) {
+    res.status(401).json({ error: 'Unauthorized Access' });
+    return;
+  }
+
+  try {
+    //check if user has permission to access the trip
+    const permissions = await db('permissions').select('*').where({
+      user_id,
+      tripid: id,
+    });
+
+    if (permissions.length === 0) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const random_string = Math.random().toString(36).substring(7);
+    //create a temporary link
+    const temp_link = await db('temp_links')
+      .insert({
+        tripid: id,
+        link: random_string,
+      })
+      .returning('*');
+
+    res.json(temp_link);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Backend Error' });
+  }
+};
+
+const downloadTrip = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!id) {
+    res.status(400).json({ error: 'id is required' });
+    return;
+  }
+
+  //Get permissions
+  try {
+    //grab temp_links and make sure it was created less than 1 hour ago
+    const temp_link = await db('temp_links').select('*').where({
+      id,
+    });
+
+    if (temp_link.length === 0) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    //check if the link is less than 1 hour old
+    const created_at = new Date(temp_link[0].created_at);
+    const now = new Date();
+
+    const diff = now.getTime() - created_at.getTime();
+
+    if (diff > 3600000) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const tripId = temp_link[0].tripid;
+    console.log('Archiving Trip', tripId);
+
+    const trip = await db('trips').where({ id: tripId });
+
+    if (trip.length === 0) {
+      res.status(404).json({ error: 'Trip not found' });
+      return;
+    }
+
+    //now -> Get All Images
+    const images = await db('images').where({ tripid: tripId });
+
+    console.log('# of Images', images.length);
+
+    //For Now -> Skip the paths
+
+    /**
+      Here is What you want to save -> And Later ZIP and SEND to the user
+      1. JSON document with trip information
+      2. JSON Document with Images Metadata
+      3. Images Folder -> With Images 
+        a) Make Subfolder for each Category
+          And Place Images in the Subfolder
+          Starting with '' as the root folder
+      4. Later -> Paths Folder
+    
+    */
+
+    //0. Create a Folder with the Trip ID
+
+    const tripFolder = path.join(__dirname, 'downloads', tripId.toString());
+
+    const new_dir = await fs.mkdir(tripFolder, { recursive: true });
+
+    //1. Create JSON Document with Trip Information -> Name this trip.json
+    const tripJsonPath = path.join(tripFolder, 'trip.json');
+    //fs.writeFileSync(tripJsonPath, JSON.stringify(trip[0], null, 2));
+    const tripJsonFile = await fs.writeFile(
+      tripJsonPath,
+      JSON.stringify(trip[0], null, 2)
+    );
+
+    //2. CREATE Json Document with Images Metadata -> Name this images.json
+    const images_json = JSON.stringify(images);
+    const imagesJsonPath = path.join(tripFolder, 'images.json');
+    //fs.writeFileSync(imagesJsonPath, JSON.stringify(images, null, 2));
+    const new_images_json = await fs.writeFile(imagesJsonPath, images_json);
+
+    //3. Create Images Folder
+    const imagesFolder = path.join(tripFolder, 'images');
+    //fs.mkdirSync(imagesFolder, { recursive: true });
+    const new_images_folder = await fs.mkdir(imagesFolder, { recursive: true });
+
+    console.log('Images Folder', imagesFolder);
+
+    //3a. Create Subfolders for each Category
+    console.log('Trip', trip[0]);
+    const categories: Category[] = trip[0].categories;
+    const imagesByCategory: {
+      category: string;
+      images: Image[];
+    }[] = categories.map((category: Category) => {
+      const categoryImages = images.filter(
+        (image: Image) => image.category === category.category
+      );
+      return {
+        category: category.category,
+        images: categoryImages,
+      };
+    });
+    //append '.' with all uncategorized images
+    const uncategorizedImages = images.filter(
+      (image: any) => image.category === '' || image.category === null
+    );
+    /*imagesByCategory.push({
+      category: '',
+      images: uncategorizedImages,
+    });*/
+
+    const destinations_seen: Set<string> = new Set();
+
+    // Throttling parameters
+    const MAX_CONCURRENT_OPERATIONS = 5;
+    const DELAY_MS = 100;
+
+    const delay = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+
+    const processImage = async (
+      image: Image,
+      imagesFolder: string,
+      destinations_seen: Set<string>
+    ) => {
+      const imagePath = path.join(__dirname, '..', 'images', image.file_path);
+      const extension = image.file_path.split('.').pop();
+      let destPath = path.join(imagesFolder, image.name + '.' + extension);
+
+      try {
+        const input_file = await fs.readFile(imagePath);
+
+        if (destinations_seen.has(destPath)) {
+          destPath = path.join(
+            imagesFolder,
+            image.name + '_' + Date.now() + '.' + extension
+          );
+        }
+
+        destinations_seen.add(destPath);
+
+        await fs.writeFile(destPath, input_file);
+        console.log('File copied successfully:', destPath);
+      } catch (e) {
+        console.error('Error copying file', e);
+      }
+    };
+
+    const processImagesWithThrottling = async (
+      images: Image[],
+      imagesFolder: string,
+      destinations_seen: Set<string>
+    ) => {
+      const queue: Promise<void>[] = [];
+
+      for (const image of images) {
+        if (queue.length >= MAX_CONCURRENT_OPERATIONS) {
+          await Promise.race(queue);
+        }
+
+        const operation = processImage(
+          image,
+          imagesFolder,
+          destinations_seen
+        ).then(() => {
+          queue.splice(queue.indexOf(operation), 1);
+        });
+
+        queue.push(operation);
+        await delay(DELAY_MS);
+      }
+
+      await Promise.all(queue);
+    };
+
+    // Process uncategorized images with throttling
+    await processImagesWithThrottling(
+      uncategorizedImages,
+      imagesFolder,
+      destinations_seen
+    );
+
+    //3b. Create the Subfolders for each Category
+    for (const { category, images } of imagesByCategory) {
+      const categoryFolder = path.join(imagesFolder, category);
+      await fs.mkdir(categoryFolder, { recursive: true });
+
+      const desinations_seen: Set<string> = new Set();
+
+      await processImagesWithThrottling(
+        images,
+        categoryFolder,
+        desinations_seen
+      );
+    }
+
+    console.log('Making ZIP ');
+    //ZIP
+    //Make it Titled {Trip.name}_{timestamp}.zip
+    const zipFileName = `${trip[0].name}_${Date.now()}.zip`;
+    const zipFilePath = path.join(__dirname, 'downloads', zipFileName);
+    const output = createWriteStream(zipFilePath);
+
+    console.log('Zip File Path', zipFilePath);
+
+    const archive = archiver('zip', {
+      zlib: { level: 9 },
+    });
+    output.on('close', async () => {
+      //remove the files
+      console.log('Removing Files');
+      //await fs.rm(tripFolder, { recursive: true });
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=${zipFileName}`
+      );
+      res.sendFile(zipFilePath);
+    });
+
+    archive.on('error', (err) => {
+      throw err;
+    });
+
+    archive.pipe(output);
+    archive.directory(tripFolder, false);
+    archive.finalize();
+
+    //send the zip file to the user
+
+    // and SEND to the user with content-disposition: attachment
+  } catch (e) {
+    console.log('Error downloading trip', e);
+    console.error(e);
+    res.status(500).json({ error: 'Backend Error' });
   }
 };
 
@@ -361,4 +648,6 @@ export {
   getTrip,
   addCategoryToTrip,
   removeCategoryFromTrip,
+  downloadTrip,
+  create_temp_link,
 };

@@ -1,7 +1,20 @@
 import dotenv from 'dotenv';
 //load .env file
 dotenv.config();
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err.stack || err);
+  process.exit(1); // Optional: Exit the process after logging the error
+});
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.error(
+    'Unhandled Rejection at:',
+    promise,
+    'reason:',
+    (reason instanceof Error ? reason.stack : reason) || reason
+  );
+  process.exit(1); // Optional: Exit the process after logging the error
+});
 //console.log(
 
 import express, { NextFunction, RequestHandler } from 'express';
@@ -17,6 +30,8 @@ import {
   getTrip,
   addCategoryToTrip,
   removeCategoryFromTrip,
+  downloadTrip,
+  create_temp_link,
 } from './routes/trips';
 
 import { Request, Response } from 'express';
@@ -47,6 +62,7 @@ import {
 } from './routes/summaries';
 
 import { verify } from './Auithorization';
+import { create } from 'domain';
 
 const app = express();
 
@@ -179,15 +195,21 @@ app.use(
     }
     next();
   },
-  express.static(path.join(__dirname, 'images')),
+  express.static(path.join(__dirname, 'images'))
 );
 
 app.use('/static/paths', express.static(path.join(__dirname, 'paths')));
 
 //app.use('/api/v1/verify/:id', verify);
 
+//Later - use a temporary token to download the file
+//download trip data
+app.get('/api/v1/trip/:id/download', downloadTrip);
+
 //now for the authenticated routes
 app.use(auth_middleware);
+
+app.post('/api/v1/trip/:id/download_begin', create_temp_link);
 
 //Get Trips
 app.get('/api/v1/trips', GetTrips);
