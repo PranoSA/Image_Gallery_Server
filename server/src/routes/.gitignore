@@ -1,1 +1,16 @@
+#All of downloads folder and its subfolders
+downloads/
+downloads/*
+downloads/**/*
 
+#all .zip
+*.zip
+
+#all .tar
+*.tar
+
+#All png,img,jpg, jpeg files
+*.png
+*.jpg
+*.jpeg
+*.img

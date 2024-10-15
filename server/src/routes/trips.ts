@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import archiver from 'archiver';
+import { exec } from 'child_process';
+import util from 'util';
+const execAsync = util.promisify(exec);
 /**
 
 POST /api/trips
@@ -517,8 +520,8 @@ const downloadTrip = async (req: Request, res: Response) => {
     const destinations_seen: Set<string> = new Set();
 
     // Throttling parameters
-    const MAX_CONCURRENT_OPERATIONS = 5;
-    const DELAY_MS = 100;
+    const MAX_CONCURRENT_OPERATIONS = 50;
+    const DELAY_MS = 10;
 
     const delay = (ms: number) =>
       new Promise((resolve) => setTimeout(resolve, ms));
@@ -545,9 +548,16 @@ const downloadTrip = async (req: Request, res: Response) => {
         destinations_seen.add(destPath);
 
         await fs.writeFile(destPath, input_file);
-        console.log('File copied successfully:', destPath);
       } catch (e) {
         console.error('Error copying file', e);
+      }
+    };
+
+    const createSymbolicLink = async (srcPath: string, destPath: string) => {
+      try {
+        await fs.symlink(srcPath, destPath);
+      } catch (e) {
+        //console.error('Error creating symbolic link');
       }
     };
 
@@ -563,11 +573,27 @@ const downloadTrip = async (req: Request, res: Response) => {
           await Promise.race(queue);
         }
 
-        const operation = processImage(
-          image,
-          imagesFolder,
-          destinations_seen
-        ).then(() => {
+        const operation = (async () => {
+          const imagePath = path.join(
+            __dirname,
+            '..',
+            'images',
+            image.file_path
+          );
+          const extension = image.file_path.split('.').pop();
+          let destPath = path.join(imagesFolder, image.name + '.' + extension);
+
+          if (destinations_seen.has(destPath)) {
+            destPath = path.join(
+              imagesFolder,
+              image.name + '_' + Date.now() + '.' + extension
+            );
+          }
+
+          destinations_seen.add(destPath);
+
+          await createSymbolicLink(imagePath, destPath);
+        })().then(() => {
           queue.splice(queue.indexOf(operation), 1);
         });
 
@@ -602,24 +628,50 @@ const downloadTrip = async (req: Request, res: Response) => {
     console.log('Making ZIP ');
     //ZIP
     //Make it Titled {Trip.name}_{timestamp}.zip
-    const zipFileName = `${trip[0].name}_${Date.now()}.zip`;
+    const zipFileName = `${trip[0].name}_${Date.now()}.tar.gz`;
     const zipFilePath = path.join(__dirname, 'downloads', zipFileName);
     const output = createWriteStream(zipFilePath);
 
     console.log('Zip File Path', zipFilePath);
 
-    const archive = archiver('zip', {
+    //execute command and wait for it to finish
+    //zip -r -y ${zipFilePath} ${tripFolder}
+    //exec command now using nodejs
+
+    //const command = `sh -c 'zip -r -y ${zipFilePath} ${tripFolder}'`;
+    // tar -czf archive.tar.gz --dereference -C 0cbd0581-2a50-43b1-9ecd-62412bb8de4e/ .
+    console.log('Creating Zip');
+    console.log('Trip Folder', tripFolder);
+    const command = `sh -c 'tar -czf \"${zipFilePath}\" --dereference -C ${tripFolder} .'`;
+    //const command = `tar -czf ${zipFilePath} --dereference -C ${tripFolder} .`;
+    const { stdout, stderr } = await execAsync(command);
+
+    console.log('Zip Created', command);
+
+    if (stderr) {
+      console.error('Error Creating Zip');
+      res.status(500).json({ error: 'Error Creating Zip' });
+      return;
+    }
+    await fs.rm(tripFolder, { recursive: true });
+    res.setHeader('Content-Disposition', `attachment; filename=${zipFileName}`);
+    res.sendFile(zipFilePath);
+    await fs.rm(zipFilePath);
+
+    /*const archive = archiver('zip', {
       zlib: { level: 9 },
     });
     output.on('close', async () => {
       //remove the files
       console.log('Removing Files');
-      //await fs.rm(tripFolder, { recursive: true });
+      await fs.rm(tripFolder, { recursive: true });
       res.setHeader(
         'Content-Disposition',
         `attachment; filename=${zipFileName}`
       );
       res.sendFile(zipFilePath);
+      //remove the zip file
+      await fs.rm(zipFilePath);
     });
 
     archive.on('error', (err) => {
@@ -629,7 +681,7 @@ const downloadTrip = async (req: Request, res: Response) => {
     archive.pipe(output);
     archive.directory(tripFolder, false);
     archive.finalize();
-
+    */
     //send the zip file to the user
 
     // and SEND to the user with content-disposition: attachment
