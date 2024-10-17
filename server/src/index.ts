@@ -78,7 +78,7 @@ const corsOptions = {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, true);
     }
   },
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
@@ -86,6 +86,9 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization'],
   Headers: ['Content-Type', 'Authorization'],
 };
+
+//cors
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
