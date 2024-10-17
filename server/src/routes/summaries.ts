@@ -72,6 +72,17 @@ export const updateDaySummary = async (req: Request, res: Response) => {
   }
 };
 
+export const getDaySummariesForTrip = async (req: Request, res: Response) => {
+  const tripid = req.params.tripid;
+  if (!tripid) {
+    res.status(400).json({ message: 'Trip ID is required' });
+    return;
+  }
+  const daySummaries = await db('day_summaries').select('*').where({ tripid });
+
+  res.json(daySummaries);
+};
+
 export const deleteDaySummary = async (req: Request, res: Response) => {
   try {
     const tripid = req.params.tripid;

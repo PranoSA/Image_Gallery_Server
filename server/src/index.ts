@@ -59,6 +59,7 @@ import {
   createDaySummary,
   updateDaySummary,
   deleteDaySummary,
+  getDaySummariesForTrip,
 } from './routes/summaries';
 
 import { verify } from './Auithorization';
@@ -86,7 +87,7 @@ const corsOptions = {
   Headers: ['Content-Type', 'Authorization'],
 };
 
-app.use(cors(corsOptions));
+//app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -287,6 +288,8 @@ app.post('/api/v1/trip/:tripid/day_summaries/:date', createDaySummary);
 app.put('/api/v1/trip/:tripid/day_summaries/:date', updateDaySummary);
 
 app.delete('/api/v1/trip/:tripid/day_summaries/:date', deleteDaySummary);
+
+app.get('/api/v1/trip/:tripid/day_summaries', getDaySummariesForTrip);
 
 // Now --- do the categories even though its not its own database table
 
