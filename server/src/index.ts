@@ -87,8 +87,6 @@ const corsOptions = {
   Headers: ['Content-Type', 'Authorization'],
 };
 
-app.use(cors(corsOptions));
-
 app.use(express.json());
 
 // Set up storage for images
