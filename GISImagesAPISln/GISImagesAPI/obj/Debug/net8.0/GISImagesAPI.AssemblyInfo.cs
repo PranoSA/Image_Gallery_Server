@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GISImagesAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb10a4109b9cdf92bca9b6f7e07dcbb9717724a1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ec95d21c76e5a93361f707dd05fdfcc78b65881a")]
 [assembly: System.Reflection.AssemblyProductAttribute("GISImagesAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GISImagesAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -47,6 +47,7 @@ type TripToInsert = {
   start_date: Date;
   end_date: Date;
   categories: string; // Category[];
+  untimed_trips: boolean;
 };
 
 type ImageToInsert = {
@@ -97,14 +98,17 @@ const GetTrips = async (req: Request, res: Response) => {
 };
 
 const CreateTrip = async (req: Request, res: Response) => {
-  const { name, description, start_date, end_date, categories } = req.body;
-  //chck fields provided
-  if (!name || !description || !start_date || !end_date) {
+  const { name, description, start_date, end_date, categories, untimed_trips } =
+    req.body;
+
+  if (!name || !description || (!untimed_trips && (!start_date || !end_date))) {
     res
       .status(400)
       .json({ error: 'name, description, start_date, end_date are required' });
     return;
   }
+
+  const untimed = untimed_trips || false;
 
   if (!categories) {
     res.status(400).json({ error: 'categories is required' });
@@ -130,8 +134,14 @@ const CreateTrip = async (req: Request, res: Response) => {
       description,
       start_date,
       end_date,
+      untimed_trips: untimed,
       categories: JSON.stringify(categories),
     };
+
+    if (untimed) {
+      trip_to_insert.start_date = new Date('1970-01-01');
+      trip_to_insert.end_date = new Date('1970-01-01');
+    }
 
     const trip = await db('trips').insert(trip_to_insert).returning('*');
 
@@ -144,7 +154,8 @@ const CreateTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
-    res.status(500).json({ error: error });
+    console.log('Error Deleting Trip', error);
+    res.status(500).json({ error: 'Error Creating Trip' });
   }
 };
 
@@ -171,6 +182,7 @@ const deleteTrip = async (req: Request, res: Response) => {
 
     res.json(trip);
   } catch (error) {
+    console.log('Error Deleting Trip', error);
     res.status(500).json({ error: error });
   }
 };
@@ -183,11 +195,19 @@ type TripInsert = {
   start_date: Date;
   end_date: Date;
   categories: string; // Category[];
+  untimed_trips: boolean;
 };
 
 const updateTrip = async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { name, description, start_date, end_date, categories } = req.body;
+  const {
+    name,
+    description,
+    start_date,
+    end_date,
+    categories,
+    untimed_trips: untimed,
+  } = req.body;
 
   //make sure all these properties are provided
   if (!name || !description || !start_date || !end_date) {
@@ -213,6 +233,7 @@ const updateTrip = async (req: Request, res: Response) => {
       start_date,
       end_date,
       categories: JSON.stringify(categories),
+      untimed_trips: untimed || false,
     };
 
     const trip = await db('trips')
@@ -304,6 +325,12 @@ const addCategoryToTrip = async (req: Request, res: Response) => {
     //add category to categories
 
     const new_category: CategoryBody = req.body;
+
+    // set to 1970-01-01 if untimed trip
+    if (trip[0].untimed_trips) {
+      new_category.start_date = '1970-01-01';
+      new_category.end_date = '1970-01-01';
+    }
 
     if (new_category.start_date || '' === '') {
       //return bad request
