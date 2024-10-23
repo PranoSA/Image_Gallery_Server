@@ -209,8 +209,8 @@ const updateTrip = async (req: Request, res: Response) => {
     untimed_trips: untimed,
   } = req.body;
 
-  //make sure all these properties are provided
-  if (!name || !description || !start_date || !end_date) {
+  //make sure all these properties are provided, if !
+  if (!name || !description || (!untimed && (!start_date || !end_date))) {
     res
       .status(400)
       .json({ error: 'name, description, start_date, end_date are required' });
