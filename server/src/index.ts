@@ -22,6 +22,8 @@ import path from 'path';
 import multer from 'multer';
 import cors from 'cors';
 
+import sharp from 'sharp';
+
 import {
   GetTrips,
   CreateTrip,
@@ -198,6 +200,54 @@ app.use(
     next();
   },
   express.static(path.join(__dirname, 'images'))
+);
+
+app.use(
+  '/static/optimized/images/:path',
+  (req: Request, res: Response, next: NextFunction) => {
+    const height = req.query.height as string;
+    const width = req.query.width as string;
+    if (height && width) {
+      res.locals.height = height;
+      res.locals.width = width;
+    }
+
+    //fail if no height or width or if they are not numbers
+    if (
+      !height ||
+      !width ||
+      isNaN(parseInt(height)) ||
+      isNaN(parseInt(width))
+    ) {
+      return res.status(400).send('Invalid height or width');
+    }
+
+    //use sharp to transform the image
+    const image_path = path.join(__dirname, 'images');
+    // get the NAME from the
+    const image_name = req.params.path;
+
+    const image = sharp(path.join(image_path, image_name))
+      .resize(parseInt(width), parseInt(height), {
+        fit: 'contain',
+        background: {
+          r: 255,
+          g: 255,
+          b: 255,
+          alpha: 0,
+        },
+      })
+      .rotate()
+      .jpeg({ quality: 75 })
+      .toBuffer()
+      .then((data) => {
+        res.send(data);
+      })
+      .catch((err) => {
+        console.log('Error', err);
+        res.status(500).send('Error');
+      });
+  }
 );
 
 app.use('/static/paths', express.static(path.join(__dirname, 'paths')));
