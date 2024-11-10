@@ -17,10 +17,40 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 //console.log(
 
+const webPush = require('web-push');
+
 import express, { NextFunction, RequestHandler } from 'express';
 import path from 'path';
 import multer from 'multer';
 import cors from 'cors';
+
+//private key path is the root of the project + "vapid_private_key.txt"
+// or vapid_public_key.txt
+const private_key_path = path.join(__dirname, '../vapid_private_key.txt');
+const public_key_path = path.join(__dirname, '../vapid_public_key.txt');
+
+//read the keys from the file
+const vapid_private_key = require('fs').readFileSync(private_key_path, 'utf8');
+const vapid_public_key = require('fs').readFileSync(public_key_path, 'utf8');
+
+const vapidKeys = {
+  publicKey: process.env.VAPID_PUBLIC_KEY,
+  privateKey: process.env.VAPID_PRIVATE_KEY,
+};
+
+webPush.setVapidDetails(
+  'mailto:admin@compressibleflowcalculator.com',
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
+/*
+//set the keys
+webPush.setVapidDetails(
+  'mailto:admin@compressibleflowcalculator.com',
+  vapid_public_key,
+  vapid_private_key
+);
+*/
 
 import sharp from 'sharp';
 
@@ -253,6 +283,62 @@ app.use(
 app.use('/static/paths', express.static(path.join(__dirname, 'paths')));
 
 //app.use('/api/v1/verify/:id', verify);
+
+let subscriptions: any[] = [];
+
+app.post('/api/v1/subscribe', (req, res) => {
+  const subscription = req.body;
+  subscriptions.push(subscription);
+
+  console.log('Subscription', subscription);
+
+  //immediately send back notification
+
+  // Immediately send back notification
+  webPush
+    .sendNotification(
+      subscription,
+      JSON.stringify({
+        title: 'Welcome to the Notification',
+        body: 'You will now receive notifications',
+      })
+    )
+    //@ts-ignore
+    .catch((error: any) => {
+      console.error('Error sending notification:', error);
+    });
+
+  res.status(201).json({ status: 'success' });
+});
+
+app.post('/api/v1/send-notification', (req, res) => {
+  const notificationPayload = {
+    title: 'New Notification',
+    body: 'This is a new notification',
+    icon: 'https://some-image-url.jpg',
+    data: {
+      url: 'https://example.com',
+    },
+  };
+
+  console.log('Subscriptions', subscriptions);
+
+  Promise.all(
+    subscriptions.map((subscription) =>
+      webPush.sendNotification(
+        subscription,
+        JSON.stringify(notificationPayload)
+      )
+    )
+  )
+    .then(() =>
+      res.status(200).json({ message: 'Notification sent successfully.' })
+    )
+    .catch((err) => {
+      console.error('Error sending notification');
+      res.sendStatus(500);
+    });
+});
 
 //Later - use a temporary token to download the file
 //download trip data
