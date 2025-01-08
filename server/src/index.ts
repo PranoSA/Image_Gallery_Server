@@ -84,6 +84,7 @@ import {
   accept_invite,
   decline_invite,
   get_invites,
+  generate_invite_to_copy,
 } from './routes/invites';
 
 import {
@@ -313,11 +314,12 @@ app.post('/api/v1/subscribe', (req, res) => {
 
 app.post('/api/v1/send-notification', (req, res) => {
   const notificationPayload = {
-    title: 'New Notification',
-    body: 'This is a new notification',
-    icon: 'https://some-image-url.jpg',
+    title: 'Notification Title',
+    body: 'Notification Body',
+    icon: 'assets/icons/icon-512x512.png',
+    tag: 'new-notification',
     data: {
-      url: 'https://example.com',
+      url: 'https://www.compressibleflowcalculator.com',
     },
   };
 
@@ -439,6 +441,8 @@ app.post('/api/v1/trips/:tripid/invites', generate_invite);
 app.get('/api/v1/invites/:inviteid/accept', accept_invite);
 app.post('/api/v1/invites/:inviteid/decline', decline_invite);
 app.get('/api/v1/invites', get_invites);
+//invite code
+app.get('/api/v1/invites/:tripid/invite_code', generate_invite_to_copy);
 
 app.listen(5000, () => {
   console.log('Server is running on port 5000');

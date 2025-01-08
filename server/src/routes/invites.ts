@@ -43,6 +43,70 @@ type PostInviteBody = {
   permissions: string;
 };
 
+const generate_invite_to_copy = async (req: Request, res: Response) => {
+  //creates and invite and sends back the entire URL to the user
+  const email = 'email_address';
+  const permissions = 'read-write';
+
+  const tripid = req.params.tripid;
+
+  if (!tripid) {
+    return res.status(400).json({ error: 'Trip ID is required' });
+  }
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  //ensure permissions is either read-write, read-only, or admin
+
+  if (
+    permissions !== 'read-write' &&
+    permissions !== 'read-only' &&
+    permissions !== 'admin'
+  ) {
+    return res.status(400).json({ error: 'Invalid Permissions' });
+  }
+
+  //generate uuid for invite
+  const id = uuidv4();
+
+  //generate random 20 byte token
+  const token = crypto.randomBytes(20).toString('hex');
+
+  //expires in 1 day
+  const expires_at = new Date();
+
+  expires_at.setDate(expires_at.getDate() + 1);
+
+  //save invite to database
+  const invite: InsertionInvite = {
+    id,
+    email,
+    expires_at,
+    code: token,
+    permissions,
+    tripid,
+    role: permissions,
+  };
+
+  const trip = await knex('trips').where({ id: tripid }).first();
+
+  const username = res.locals.name;
+
+  const invite_db = await knex('invites').insert(invite).returning('*');
+
+  const invite_id = invite_db[0].id;
+
+  const url =
+    process.env.CLIENT_URL + '/verify/' + invite_id + '?code=' + token;
+
+  // DO NOT!! EMAIL INVITE
+
+  //send back the URL and the invite id
+  res.json({ url, id });
+};
+
 const generate_invite = async (req: Request, res: Response) => {
   //How Should I Send The Invite?
   //Email? SMS? QR Code?
@@ -135,6 +199,7 @@ const accept_invite = async (req: Request, res: Response) => {
   const invite = invites[0];
 
   if (!invite) {
+    console.log('Invite not found');
     return res.status(404).json({ error: 'Invite not found' });
   }
 
@@ -218,4 +283,10 @@ const get_invites = async (req: Request, res: Response) => {
   res.json(invites);
 };
 
-export { generate_invite, accept_invite, decline_invite, get_invites };
+export {
+  generate_invite,
+  accept_invite,
+  decline_invite,
+  get_invites,
+  generate_invite_to_copy,
+};
